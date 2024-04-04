@@ -9,6 +9,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.memory import ConversationBufferMemory
 
+import os
+from tempfile import gettempdir
 import streamlit as st
 
 st.set_page_config(
@@ -61,15 +63,26 @@ memory = ConversationBufferMemory(
     return_messages=True,
 )
 
+# 임시 디렉토리 경로 사용 예시
+temp_dir = gettempdir()
+
 # 동일한 file(hashing)이면 구동되지 않고, 직전에 실행된 결과를 리턴.
 @st.cache_data(show_spinner="Embdding file...")
 def embed_file(file, user_api_key):
     file_content = file.read()
-    # Caching
-    file_path = f"./.cache/files/{file.name}"
+    
+    # Caching File
+    file_path = os.path.join(temp_dir, file.name)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
     with open(file_path, "wb") as f:
         f.write(file_content)
-    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
+
+    # Caching Embeddings
+    cache_base_dir = os.path.join(temp_dir, "streamlit_cache", "embeddings")
+    file_cache_dir = os.path.join(cache_base_dir, file.name)
+    os.makedirs(file_cache_dir, exist_ok=True)
+    cache_dir = LocalFileStore(file_cache_dir)
 
     # splitter
     splitter = CharacterTextSplitter.from_tiktoken_encoder(
